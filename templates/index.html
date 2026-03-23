@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YOLO Skin Tone Detector</title>
+  <meta name="description" content="Upload an image and detect skin tones using YOLO AI model" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --surface2: #22223a;
+      --accent: #7c3aed;
+      --accent-glow: rgba(124, 58, 237, 0.35);
+      --accent-light: #a78bfa;
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --success: #34d399;
+      --border: rgba(255,255,255,0.06);
+      --radius: 16px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* --- Header --- */
+    header {
+      width: 100%;
+      padding: 28px 0 12px;
+      text-align: center;
+      background: linear-gradient(180deg, rgba(124,58,237,0.12) 0%, transparent 100%);
+    }
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-light), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    header p { color: var(--text-dim); font-size: 0.9rem; margin-top: 6px; }
+
+    /* --- Main --- */
+    main {
+      width: 100%;
+      max-width: 640px;
+      padding: 24px 16px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* --- Drop Zone --- */
+    .dropzone {
+      position: relative;
+      border: 2px dashed rgba(124,58,237,0.35);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+    }
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: var(--accent);
+      background: var(--surface2);
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+    .dropzone input { display: none; }
+    .dropzone-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .dropzone-text { font-size: 0.95rem; color: var(--text-dim); }
+    .dropzone-text span { color: var(--accent-light); font-weight: 600; text-decoration: underline; }
+
+    /* --- Preview --- */
+    .preview-wrap {
+      display: none;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .preview-wrap img {
+      width: 100%;
+      display: block;
+    }
+    .preview-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--surface2);
+    }
+    .preview-name {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60%;
+    }
+    .btn-clear {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.82rem;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .btn-clear:hover { color: var(--text); }
+
+
+
+    /* --- Loader --- */
+    .loader {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 32px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-text { color: var(--text-dim); font-size: 0.85rem; }
+
+    /* --- Result --- */
+    .result {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .result-img-wrap {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .result-img-wrap img { width: 100%; display: block; }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .result-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 100px;
+    }
+
+    .det-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .det-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .det-class {
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+    .det-conf {
+      font-size: 0.82rem;
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    .no-det {
+      text-align: center;
+      color: var(--text-dim);
+      padding: 24px;
+      font-size: 0.9rem;
+    }
+
+    /* --- Footer --- */
+    footer {
+      margin-top: auto;
+      padding: 20px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🔍 YOLO Skin Tone Detector</h1>
+  <p>Upload an image to detect skin tones with AI</p>
+</header>
+
+<main>
+  <!-- Drop Zone -->
+  <div class="dropzone" id="dropzone">
+    <input type="file" id="fileInput" accept="image/*" />
+    <div class="dropzone-icon">📷</div>
+    <p class="dropzone-text">Drag &amp; drop an image here or <span>browse</span></p>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview-wrap" id="preview">
+    <img id="previewImg" src="" alt="Preview" />
+    <div class="preview-bar">
+      <span class="preview-name" id="fileName"></span>
+      <button class="btn-clear" id="btnClear">Remove</button>
+    </div>
+  </div>
+
+
+  <!-- Loader -->
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    <span class="loader-text">Analyzing image…</span>
+  </div>
+
+  <!-- Result -->
+  <div class="result" id="result">
+    <div class="result-header">
+      <h2>Results</h2>
+      <span class="badge" id="countBadge"></span>
+    </div>
+    <div class="result-img-wrap">
+      <img id="resultImg" src="" alt="Detection result" />
+    </div>
+    <div class="det-list" id="detList"></div>
+  </div>
+</main>
+
+<footer>Powered by Ultralytics YOLO &bull; Deployed on Render</footer>
+
+<script>
+  const dropzone  = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const preview   = document.getElementById('preview');
+  const previewImg= document.getElementById('previewImg');
+  const fileName  = document.getElementById('fileName');
+  const btnClear  = document.getElementById('btnClear');
+
+  const loader    = document.getElementById('loader');
+  const result    = document.getElementById('result');
+  const resultImg = document.getElementById('resultImg');
+  const detList   = document.getElementById('detList');
+  const countBadge= document.getElementById('countBadge');
+
+  let selectedFile = null;
+
+  // --- Drop Zone Events ---
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover',  e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+  function handleFile(file) {
+    if (!file.type.startsWith('image/')) return alert('Please upload an image file.');
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewImg.src = e.target.result;
+      fileName.textContent = file.name;
+      dropzone.style.display = 'none';
+      preview.style.display = 'block';
+      result.style.display = 'none';
+      runDetection();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  btnClear.addEventListener('click', resetUI);
+
+  function resetUI() {
+    selectedFile = null;
+    fileInput.value = '';
+    dropzone.style.display = '';
+    preview.style.display = 'none';
+    result.style.display = 'none';
+    loader.style.display = 'none';
+  }
+
+  // --- Detection (auto-triggered on upload) ---
+  async function runDetection() {
+    if (!selectedFile) return;
+    loader.style.display = 'flex';
+    result.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const res = await fetch('/detect', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json();
+
+      resultImg.src = 'data:image/jpeg;base64,' + data.image;
+      countBadge.textContent = data.count + ' detection' + (data.count !== 1 ? 's' : '');
+
+      detList.innerHTML = '';
+      if (data.detections.length === 0) {
+        detList.innerHTML = '<div class="no-det">No objects detected.</div>';
+      } else {
+        data.detections.forEach(d => {
+          const card = document.createElement('div');
+          card.className = 'det-card';
+          card.innerHTML = `
+            <span class="det-class">${d.class}</span>
+            <span class="det-conf">${(d.confidence * 100).toFixed(1)}%</span>
+          `;
+          detList.appendChild(card);
+        });
+      }
+
+      result.style.display = 'flex';
+    } catch (err) {
+      alert('Detection failed: ' + err.message);
+    } finally {
+      loader.style.display = 'none';
+    }
+  }
+</script>
+</body>
+</html>
